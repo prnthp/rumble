@@ -2,6 +2,8 @@ manifest:
   remotes:
     - name: ncs
       url-base: https://github.com/nrfconnect
+    - name: nanopb
+      url-base: https://github.com/nanopb
   projects:
     - name: sdk-nrf
       remote: ncs
@@ -9,5 +11,10 @@ manifest:
       revision: v2.4.0-rc1
       import: true
       clone-depth: 1
+    - name: nanopb
+      repo-path: nanopb
+      revision: 0.4.7
+      path: rumble/ext/nanopb
+      remote: nanopb
   self:
     path: rumble

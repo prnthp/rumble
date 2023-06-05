@@ -18,3 +18,12 @@
 		channel-r;
 	};
 };
+
+&i2c0 {
+	status="okay";
+
+	nau8325: nau8325@21 {
+		compatible = "nuvoton,nau8325";
+		reg = <0x21>;
+	};
+};

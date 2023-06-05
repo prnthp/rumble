@@ -1,0 +1,12 @@
+description: Nuvoton NAU8325 Audio Driver
+
+compatible: "nuvoton,nau8325"
+
+include: i2c-device.yaml
+
+# properties:
+#   interrupt-gpios:
+#     type: phandle-array
+#     required: false
+#     description: |
+#       (Optional) Interrupt on alarm signal.

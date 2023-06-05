@@ -1,0 +1,14 @@
+# NAU8325 Stereo I2S Class-D Audio Amplifier
+
+config NAU8325
+    bool "NAU8325 Stereo Amplifier"
+        default y
+        select I2C
+        select I2S
+
+    help
+      Enable I2S and I2C-based driver for NAU8325 audio amplifier
+
+config NAU8325_LOG_LEVEL
+    int
+    default 4
