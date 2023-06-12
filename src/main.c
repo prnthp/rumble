@@ -158,6 +158,15 @@ int main(void)
 		LOG_ERR("Could not initialize audio device!");
 	}
 
+	uint16_t value;
+
+	int res = nau8325_write_reg(audio_output_dev, 0x0, 42);
+	k_msleep(100);
+	nau8325_read_reg(audio_output_dev, 0x2, &value);
+	LOG_INF("Result: %d", value);
+	nau8325_read_reg(audio_output_dev, 0xD, &value);
+	nau8325_read_reg(audio_output_dev, 0x13, &value);
+
 	LOG_INF("USB enabled");
 	return 0;
 }
