@@ -11,12 +11,6 @@
 		channel-l;
 		channel-r;
 	};
-	mic_0 {
-		compatible = "usb-audio-mic";
-		feature-mute;
-		channel-l;
-		channel-r;
-	};
 };
 
 &i2c0 {
@@ -26,4 +20,8 @@
 		compatible = "nuvoton,nau8325";
 		reg = <0x21>;
 	};
+};
+
+&i2s0 {
+	status="okay";
 };

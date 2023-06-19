@@ -21,12 +21,34 @@
 #include <nrfx_nvmc.h>
 
 #include <nau8325.h>
+#include <zephyr/drivers/i2s.h>
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 
-static const struct device *const mic_dev = DEVICE_DT_GET_ONE(usb_audio_mic);
+// static const struct device *const mic_dev = DEVICE_DT_GET_ONE(usb_audio_mic);
 static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
 static const struct device *const audio_output_dev = DEVICE_DT_GET(DT_INST(0, nuvoton_nau8325));
+static const struct device *const i2s_dev = DEVICE_DT_GET(DT_N_NODELABEL_i2s0);
+
+#define NUM_SAMPLES 48
+static int16_t data_l[NUM_SAMPLES] = {
+	  6392,  12539,  18204,  23169,  27244,  30272,  32137,  32767,  32137,
+	 30272,  27244,  23169,  18204,  12539,   6392,      0,  -6393, -12540,
+	-18205, -23170, -27245, -30273, -32138, -32767, -32138, -30273, -27245,
+	-23170, -18205, -12540,  -6393,     -1,
+};
+static int16_t data_r[NUM_SAMPLES] = {
+	 12539,  23169,  30272,  32767,  30272,  23169,  12539,      0, -12540,
+	-23170, -30273, -32767, -30273, -23170, -12540,     -1,  12539,  23169,
+	 30272,  32767,  30272,  23169,  12539,      0, -12540, -23170, -30273,
+	-32767, -30273, -23170, -12540,     -1,
+};
+#define BLOCK_SIZE (2 * sizeof(data_l))
+#define NUM_BLOCKS 5
+
+// 48 uint16 * 2 channels = 48 * 2 * 2 = 192 bytes
+static K_MEM_SLAB_DEFINE(mem_slab, BLOCK_SIZE, NUM_BLOCKS, 32);
+void *mem_blocks;
 
 static void data_received(const struct device *dev,
 			  struct net_buf *buffer,
@@ -41,15 +63,34 @@ static void data_received(const struct device *dev,
 
 	LOG_DBG("Received %d data, buffer %p", size, buffer);
 
-	/* Check if OUT device buffer can be used for IN device */
-	if (size == usb_audio_get_in_frame_size(mic_dev)) {
-		ret = usb_audio_send(mic_dev, buffer, size);
-		if (ret) {
-			net_buf_unref(buffer);
+	if (mem_blocks != NULL)
+	{
+		// for (int i = 0; i < NUM_SAMPLES; i++) {
+		// 	((uint16_t*)mem_blocks)[2 * i] = buffer->data[4 * i];
+		// 	((uint16_t*)mem_blocks)[2 * i + 1] = buffer->data[4 * i] << 8;
+		// 	// ((uint16_t*)mem_blocks)[2 * i] = data_l[i % NUM_SAMPLES];
+		// 	// ((uint16_t*)mem_blocks)[2 * i + 1] = data_l[i % NUM_SAMPLES];
+		// }
+		for (int i = 0; i < size; i++) {
+			((uint8_t*)mem_blocks)[i] = buffer->data[i];
 		}
-	} else {
-		net_buf_unref(buffer);
+
+		int res = 0;
+		
+		if (device_is_ready(i2s_dev))
+		{
+			res = i2s_trigger(i2s_dev, I2S_DIR_TX, I2S_TRIGGER_PREPARE);
+
+			res = i2s_buf_write(i2s_dev, mem_blocks, BLOCK_SIZE);
+			if (res < 0) {
+				LOG_INF("Error: i2s_write failed with %d\n", res);
+			}
+
+			res = i2s_trigger(i2s_dev, I2S_DIR_TX, I2S_TRIGGER_START);
+		}
 	}
+	
+	net_buf_unref(buffer);
 }
 
 static void feature_update(const struct device *dev,
@@ -122,16 +163,7 @@ int main(void)
 
 	LOG_INF("Found USB Headphones Device");
 
-	if (!device_is_ready(mic_dev)) {
-		LOG_ERR("Device USB Microphone is not ready");
-		return 0;
-	}
-
-	LOG_INF("Found USB Microphone Device");
-
 	usb_audio_register(hp_dev, &hp_ops);
-
-	usb_audio_register(mic_dev, &mic_ops);
 
 	ret = usb_enable(NULL);
 	if (ret != 0) {
@@ -160,13 +192,54 @@ int main(void)
 
 	uint16_t value;
 
-	int res = nau8325_write_reg(audio_output_dev, 0x0, 42);
-	k_msleep(100);
+	int res = nau8325_write_reg(audio_output_dev, 0x0, 42); // Software Reset
 	nau8325_read_reg(audio_output_dev, 0x2, &value);
-	LOG_INF("Result: %d", value);
-	nau8325_read_reg(audio_output_dev, 0xD, &value);
-	nau8325_read_reg(audio_output_dev, 0x13, &value);
+	LOG_INF("Result: %d", value); // Should be 0x21F2
+	nau8325_write_reg(audio_output_dev, 0x0D, 0b0000000000000010); // 16 bit I2S
+	nau8325_write_reg(audio_output_dev, 0x40, 0b1010100000000001); // DAC data does not gate power up
+	nau8325_write_reg(audio_output_dev, 0x65, 0b0000000000000111); // enable 8x MCLK and extra multipliers
+	nau8325_write_reg(audio_output_dev, 0x03, 0b0000000000100000); // MCLK x8
+	nau8325_write_reg(audio_output_dev, 0x61, 0b0001010101010101); // Enable everything through clock detection
+	nau8325_write_reg(audio_output_dev, 0x63, 0b0000000000000100); // ANALOG_CONTROL_3, volume
+	nau8325_write_reg(audio_output_dev, 0x04, 0b0000000000001100); // Enable L and R DAC (required)
 
 	LOG_INF("USB enabled");
+
+	const struct device *i2s_dev = DEVICE_DT_GET(DT_NODELABEL(i2s0));
+	if (!device_is_ready(i2s_dev)) {
+		LOG_INF("%s is not ready\n", i2s_dev->name);
+		return 0;
+	}
+
+	/* Configure the I2S device */
+	struct i2s_config i2s_cfg;
+	i2s_cfg.word_size = 16; // due to int16_t in data_frame declaration
+	i2s_cfg.channels = 2; // L + R channel
+	i2s_cfg.format = I2S_FMT_DATA_FORMAT_I2S;
+	i2s_cfg.options = I2S_OPT_BIT_CLK_MASTER | I2S_OPT_FRAME_CLK_MASTER;
+	i2s_cfg.frame_clk_freq = 48000;
+	i2s_cfg.mem_slab = &mem_slab;
+	i2s_cfg.block_size = BLOCK_SIZE;
+	i2s_cfg.timeout = 0;
+	res = i2s_configure(i2s_dev, I2S_DIR_TX, &i2s_cfg);
+	if (res < 0) {
+		LOG_INF("Failed to configure the I2S stream: (%d)\n", res);
+		return 0;
+	}
+
+	LOG_INF("i2s configured");
+
+	res = k_mem_slab_alloc(&mem_slab, &mem_blocks, K_NO_WAIT);
+	if (res < 0) {
+		LOG_INF("Failed to allocate the memory blocks: %d\n", res);
+		return 0;
+	}
+
+	LOG_INF("mem slab allocd");
+
+	memset((uint16_t*)mem_blocks, 0, NUM_SAMPLES * NUM_BLOCKS);
+
+	LOG_INF("Initialized.");
+
 	return 0;
 }
