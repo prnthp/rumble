@@ -116,6 +116,7 @@ static const struct usb_audio_ops mic_ops = {
 
 int main(void)
 {
+#if 0 // nrf52840
 	if (NRF_UICR->REGOUT0 != UICR_REGOUT0_VOUT_3V3)
 	{
 		NRF_NVMC->CONFIG = NVMC_CONFIG_WEN_Wen << NVMC_CONFIG_WEN_Pos;
@@ -129,6 +130,21 @@ int main(void)
 		{
 		}
 	}
+#else // nrf5340
+	if (NRF_UICR->VREGHVOUT != UICR_VREGHVOUT_VREGHVOUT_3V3)
+	{
+		NRF_NVMC->CONFIG = NVMC_CONFIG_WEN_Wen << NVMC_CONFIG_WEN_Pos;
+		while (NRF_NVMC->READY == NVMC_READY_READY_Busy)
+		{
+		}
+		NRF_UICR->VREGHVOUT = UICR_VREGHVOUT_VREGHVOUT_3V3;
+
+		NRF_NVMC->CONFIG = NVMC_CONFIG_WEN_Ren << NVMC_CONFIG_WEN_Pos;
+		while (NRF_NVMC->READY == NVMC_READY_READY_Busy)
+		{
+		}
+	}
+#endif
 
 	if (!device_is_ready(led.port))
 	{
@@ -200,8 +216,11 @@ int main(void)
 	nau8325_write_reg(audio_output_dev, 0x65, 0b0000000000000111); // enable 8x MCLK and extra multipliers
 	nau8325_write_reg(audio_output_dev, 0x03, 0b0000000000100000); // MCLK x8
 	nau8325_write_reg(audio_output_dev, 0x61, 0b0001010101010101); // Enable everything through clock detection
-	nau8325_write_reg(audio_output_dev, 0x63, 0b0000000000000100); // ANALOG_CONTROL_3, volume
+	nau8325_write_reg(audio_output_dev, 0x63, 0b0000000000010000); // ANALOG_CONTROL_3, volume
+	nau8325_write_reg(audio_output_dev, 0x63, 0b0000000000001000); // ANALOG_CONTROL_3, volume
 	nau8325_write_reg(audio_output_dev, 0x04, 0b0000000000001100); // Enable L and R DAC (required)
+	nau8325_write_reg(audio_output_dev, 0x13, 0xffff); // DAC Volume
+	nau8325_write_reg(audio_output_dev, 0x73, 0x0); // Unregulated DAC
 
 	LOG_INF("USB enabled");
 
