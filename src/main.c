@@ -27,6 +27,8 @@ LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 
 // static const struct device *const mic_dev = DEVICE_DT_GET_ONE(usb_audio_mic);
 static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
+static const struct gpio_dt_spec button = GPIO_DT_SPEC_GET(DT_ALIAS(sw0), gpios);
+static struct gpio_callback button_cb_data;
 static const struct device *const audio_output_dev = DEVICE_DT_GET(DT_INST(0, nuvoton_nau8325));
 static const struct device *const i2s_dev = DEVICE_DT_GET(DT_N_NODELABEL_i2s0);
 
@@ -45,6 +47,11 @@ static int16_t data_r[NUM_SAMPLES] = {
 };
 #define BLOCK_SIZE (2 * sizeof(data_l))
 #define NUM_BLOCKS 5
+
+#define NUM_VOLUME_LEVELS 5
+static uint16_t volumes[NUM_VOLUME_LEVELS] = {1, 2, 4, 8, 16};
+static uint8_t next_volume_level = 0;
+static uint8_t current_volume_level = 0;
 
 // 48 uint16 * 2 channels = 48 * 2 * 2 = 192 bytes
 static K_MEM_SLAB_DEFINE(mem_slab, BLOCK_SIZE, NUM_BLOCKS, 32);
@@ -65,12 +72,6 @@ static void data_received(const struct device *dev,
 
 	if (mem_blocks != NULL)
 	{
-		// for (int i = 0; i < NUM_SAMPLES; i++) {
-		// 	((uint16_t*)mem_blocks)[2 * i] = buffer->data[4 * i];
-		// 	((uint16_t*)mem_blocks)[2 * i + 1] = buffer->data[4 * i] << 8;
-		// 	// ((uint16_t*)mem_blocks)[2 * i] = data_l[i % NUM_SAMPLES];
-		// 	// ((uint16_t*)mem_blocks)[2 * i + 1] = data_l[i % NUM_SAMPLES];
-		// }
 		for (int i = 0; i < size; i++) {
 			((uint8_t*)mem_blocks)[i] = buffer->data[i];
 		}
@@ -91,15 +92,30 @@ static void data_received(const struct device *dev,
 	}
 	
 	net_buf_unref(buffer);
+
+	if (next_volume_level != current_volume_level)
+	{
+		nau8325_write_reg(audio_output_dev, 0x63, volumes[current_volume_level]); // ANALOG_CONTROL_3, volume
+		LOG_INF("Setting volume to: %d at %d", volumes[current_volume_level], current_volume_level);
+		current_volume_level = next_volume_level;
+	}
 }
 
 static void feature_update(const struct device *dev,
 			   const struct usb_audio_fu_evt *evt)
 {
+	uint8_t val = 0;
 	LOG_DBG("Control selector %d for channel %d updated",
 		evt->cs, evt->channel);
 	switch (evt->cs) {
 	case USB_AUDIO_FU_MUTE_CONTROL:
+		val = &evt->val;
+		LOG_INF("Mute control: %d, len: %d", val, evt->val_len);
+		break;
+	case USB_AUDIO_FU_VOLUME_CONTROL:
+		val = &evt->val;
+		LOG_INF("Volume control: %d, len: %d", val, evt->val_len);
+		break;
 	default:
 		break;
 	}
@@ -113,6 +129,11 @@ static const struct usb_audio_ops hp_ops = {
 static const struct usb_audio_ops mic_ops = {
 	.feature_update_cb = feature_update,
 };
+
+void button_pressed(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
+{
+	next_volume_level = (current_volume_level + 1) % NUM_VOLUME_LEVELS;
+}
 
 int main(void)
 {
@@ -216,13 +237,36 @@ int main(void)
 	nau8325_write_reg(audio_output_dev, 0x65, 0b0000000000000111); // enable 8x MCLK and extra multipliers
 	nau8325_write_reg(audio_output_dev, 0x03, 0b0000000000100000); // MCLK x8
 	nau8325_write_reg(audio_output_dev, 0x61, 0b0001010101010101); // Enable everything through clock detection
-	nau8325_write_reg(audio_output_dev, 0x63, 0b0000000000010000); // ANALOG_CONTROL_3, volume
-	nau8325_write_reg(audio_output_dev, 0x63, 0b0000000000001000); // ANALOG_CONTROL_3, volume
+	nau8325_write_reg(audio_output_dev, 0x63, 0b0000000000000001); // ANALOG_CONTROL_3, volume
 	nau8325_write_reg(audio_output_dev, 0x04, 0b0000000000001100); // Enable L and R DAC (required)
 	nau8325_write_reg(audio_output_dev, 0x13, 0xffff); // DAC Volume
 	nau8325_write_reg(audio_output_dev, 0x73, 0x0); // Unregulated DAC
 
 	LOG_INF("USB enabled");
+
+	if (!gpio_is_ready_dt(&button))
+	{
+		LOG_INF("%s is not ready\n", button.port->name);
+		return 0;
+	}
+
+	ret = gpio_pin_configure_dt(&button, GPIO_INPUT);
+	if (ret != 0) {
+		LOG_INF("Error %d: failed to configure %s pin %d\n",
+		       ret, button.port->name, button.pin);
+		return 0;
+	}
+
+	ret = gpio_pin_interrupt_configure_dt(&button,
+					      GPIO_INT_EDGE_TO_INACTIVE);
+	if (ret != 0) {
+		LOG_INF("Error %d: failed to configure interrupt on %s pin %d\n",
+			ret, button.port->name, button.pin);
+		return 0;
+	}
+
+	gpio_init_callback(&button_cb_data, button_pressed, BIT(button.pin));
+	gpio_add_callback(button.port, &button_cb_data);
 
 	const struct device *i2s_dev = DEVICE_DT_GET(DT_NODELABEL(i2s0));
 	if (!device_is_ready(i2s_dev)) {
@@ -239,7 +283,7 @@ int main(void)
 	i2s_cfg.frame_clk_freq = 48000;
 	i2s_cfg.mem_slab = &mem_slab;
 	i2s_cfg.block_size = BLOCK_SIZE;
-	i2s_cfg.timeout = 0;
+	i2s_cfg.timeout = 50;
 	res = i2s_configure(i2s_dev, I2S_DIR_TX, &i2s_cfg);
 	if (res < 0) {
 		LOG_INF("Failed to configure the I2S stream: (%d)\n", res);
