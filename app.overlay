@@ -8,7 +8,6 @@
 	hp_0 {
 		compatible = "usb-audio-hp";
 		feature-mute;
-		feature-volume;
 		channel-l;
 		channel-r;
 	};

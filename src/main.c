@@ -95,8 +95,8 @@ static void data_received(const struct device *dev,
 
 	if (next_volume_level != current_volume_level)
 	{
-		nau8325_write_reg(audio_output_dev, 0x63, volumes[current_volume_level]); // ANALOG_CONTROL_3, volume
-		LOG_INF("Setting volume to: %d at %d", volumes[current_volume_level], current_volume_level);
+		nau8325_write_reg(audio_output_dev, 0x63, volumes[next_volume_level]); // ANALOG_CONTROL_3, volume
+		LOG_INF("Setting volume to: %d at %d", volumes[next_volume_level], next_volume_level);
 		current_volume_level = next_volume_level;
 	}
 }
