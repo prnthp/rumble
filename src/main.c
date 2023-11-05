@@ -239,7 +239,7 @@ int main(void)
 	nau8325_write_reg(audio_output_dev, 0x61, 0b0001010101010101); // Enable everything through clock detection
 	nau8325_write_reg(audio_output_dev, 0x63, 0b0000000000000001); // ANALOG_CONTROL_3, volume
 	nau8325_write_reg(audio_output_dev, 0x04, 0b0000000000001100); // Enable L and R DAC (required)
-	nau8325_write_reg(audio_output_dev, 0x13, 0xffff); // DAC Volume
+	nau8325_write_reg(audio_output_dev, 0x13, 0xf3f3); // DAC Volume
 	nau8325_write_reg(audio_output_dev, 0x73, 0x0); // Unregulated DAC
 
 	LOG_INF("USB enabled");
@@ -303,6 +303,8 @@ int main(void)
 	memset((uint16_t*)mem_blocks, 0, NUM_SAMPLES * NUM_BLOCKS);
 
 	LOG_INF("Initialized.");
+
+	next_volume_level = 0;
 
 	return 0;
 }
