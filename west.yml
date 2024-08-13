@@ -8,7 +8,7 @@ manifest:
     - name: sdk-nrf
       remote: ncs
       path: nrf
-      revision: v2.4.0-rc1
+      revision: v2.7.0
       import: true
       clone-depth: 1
     - name: nanopb
