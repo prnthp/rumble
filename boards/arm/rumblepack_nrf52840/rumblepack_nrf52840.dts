@@ -1,0 +1,107 @@
+// Copyright (c) 2022 Nordic Semiconductor ASA
+// SPDX-License-Identifier: Apache-2.0
+
+/dts-v1/;
+#include <nordic/nrf52840_qiaa.dtsi>
+#include "rumblepack_nrf52840-pinctrl.dtsi"
+
+/ {
+	model = "rumblepack_nrf52840";
+	compatible = "jom,rumblepack-nrf52840";
+
+	chosen {
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+		zephyr,code-partition = &slot0_partition;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		led0: led_0 {
+			gpios = < &gpio0 31 GPIO_ACTIVE_LOW >;
+			label = "Status LED";
+		};
+	};
+
+	buttons {
+		compatible = "gpio-keys";
+
+		button0: button_0 {
+			gpios = < &gpio0 30 (GPIO_PULL_UP | GPIO_ACTIVE_LOW) >;
+			label = "DFU Switch";
+		};
+	};
+
+	aliases {
+		led0 = &led0;
+		sw0 = &button0;
+	};
+};
+
+&gpiote {
+	status = "okay";
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&i2s0 {
+	status = "okay";
+	pinctrl-0 = <&i2s0_default>;
+	pinctrl-1 = <&i2s0_sleep>;
+	pinctrl-names = "default", "sleep";
+	clock-source = "PCLK32M_HFXO";
+	// // Deprecated
+	// sck-pin = < 8 >;
+	// mck-pin = < 4 >;
+	// sdout-pin = < 6 >;
+	// lrck-pin = < 26 >;
+};
+
+&i2c0 {
+	compatible = "nordic,nrf-twim";
+	status = "okay";
+	pinctrl-0 = <&i2c0_default>;
+	pinctrl-1 = <&i2c0_sleep>;
+	pinctrl-names = "default", "sleep";
+	// Deprecated
+	// scl-pin = < 17 >;
+	// sda-pin = < 15 >;
+};
+
+&flash0 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		boot_partition: partition@0 {
+			label = "mcuboot";
+			reg = <0x0 0xc000>;
+		};
+		slot0_partition: partition@c000 {
+			label = "image-0";
+			reg = <0xc000 0x72000>;
+		};
+		slot1_partition: partition@7e000 {
+			label = "image-1";
+			reg = <0x7e000 0x72000>;
+		};
+		scratch_partition: partition@f0000 {
+			label = "image-scratch";
+			reg = <0xf0000 0xa000>;
+		};
+		storage_partition: partition@fa000 {
+			label = "storage";
+			reg = <0xfa000 0x6000>;
+		};
+	};
+};
+
+zephyr_udc0: &usbd {
+	compatible = "nordic,nrf-usbd";
+	status = "okay";
+};
+

@@ -1,0 +1,10 @@
+# Copyright (c) 2023 Nordic Semiconductor ASA
+# SPDX-License-Identifier: Apache-2.0
+
+if BOARD_RUMBLEPACK_BT40_NRF5340
+
+config BOARD
+	default "rumblepack_bt40_nrf5340"
+
+
+endif
