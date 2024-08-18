@@ -4,6 +4,7 @@
     "nrfx_nvmc.h": "c",
     "nrf_power.h": "c",
     "kernel.h": "c",
-    "i2s.h": "c"
+    "i2s.h": "c",
+    "sample_usbd.h": "c"
   }
 }

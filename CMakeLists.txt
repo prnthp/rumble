@@ -9,8 +9,11 @@ list(APPEND ZEPHYR_EXTRA_MODULES
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(audio)
 
+include(${ZEPHYR_BASE}/samples/subsys/usb/common/common.cmake)
+
 set(SOURCES
     src/main.c
+    src/feedback_nrf53.c
     )
 
 target_sources(app PRIVATE ${SOURCES})
