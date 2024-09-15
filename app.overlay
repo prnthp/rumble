@@ -9,7 +9,12 @@
 		compatible = "usb-audio-hp";
 		feature-mute;
 		channel-l;
-		channel-r;
+		channel-r;		
+		
+		feature-volume;
+		volume-max = <0x0500>;
+		volume-min = <0xBA00>;
+		volume-res = <0x100>;
 	};
 };
 
