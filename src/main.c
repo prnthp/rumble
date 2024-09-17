@@ -16,12 +16,13 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/usb/usb_device.h>
 #include <zephyr/usb/class/usb_audio.h>
-#include <zephyr/usb/class/usb_hid.h>
 
 #include <nrfx_nvmc.h>
 
 #include <nau8325.h>
 #include <zephyr/drivers/i2s.h>
+
+#include "nrfx_i2s.h"
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 
@@ -56,6 +57,8 @@ static uint8_t current_volume_level = 0;
 // 48 uint16 * 2 channels = 48 * 2 * 2 = 192 bytes
 static K_MEM_SLAB_DEFINE(mem_slab, BLOCK_SIZE, NUM_BLOCKS, 32);
 void *mem_blocks;
+
+static nrfx_i2s_t i2s_inst = NRFX_I2S_INSTANCE(0);
 
 static void data_received(const struct device *dev,
 			  struct net_buf *buffer,
@@ -133,6 +136,51 @@ static const struct usb_audio_ops mic_ops = {
 void button_pressed(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
 {
 	next_volume_level = (current_volume_level + 1) % NUM_VOLUME_LEVELS;
+}
+
+static bool data_ready_flag = false;
+
+ISR_DIRECT_DECLARE(i2s_isr_handler)
+{
+	data_ready_flag = false;
+	nrfx_i2s_irq_handler();
+	ISR_DIRECT_PM(); /* PM done after servicing interrupt for best latency
+			  */
+	return 1;		 /* We should check if scheduling decision should be made */
+}
+
+static void i2s_data_handler(nrfx_i2s_buffers_t const *p_released, uint32_t status)
+{
+	if (status == NRFX_I2S_STATUS_NEXT_BUFFERS_NEEDED)
+	{
+
+	}
+	if (p_released)
+	{
+		if (p_released->p_tx_buffer )
+	}
+}
+
+nrfx_err_t audio_init()
+{
+	IRQ_DIRECT_CONNECT(I2S0_IRQn, 0, i2s_isr_handler, 0);
+
+	nrfx_i2s_config_t i2s_cfg = NRFX_I2S_DEFAULT_CONFIG(2, 4, 3, 5, NRF_I2S_PIN_NOT_CONNECTED);
+	i2s_cfg.mode = NRF_I2S_MODE_MASTER;
+	i2s_cfg.sample_width = NRF_I2S_SWIDTH_16BIT;
+	i2s_cfg.channels = NRF_I2S_CHANNELS_STEREO;
+	i2s_cfg.clksrc = NRF_I2S_CLKSRC_ACLK;
+	i2s_cfg.enable_bypass = true;
+	i2s_cfg.ratio = NRF_I2S_RATIO_256X;
+
+	nrfx_err_t err = nrfx_i2s_init(&i2s_inst, &i2s_cfg, i2s_data_handler);
+	if (err != NRFX_SUCCESS)
+	{
+		LOG_ERR("I2S Init error");
+		return err;
+	}
+
+	return err;
 }
 
 int main(void)
@@ -234,8 +282,10 @@ int main(void)
 	LOG_INF("Result: %d", value); // Should be 0x21F2
 	nau8325_write_reg(audio_output_dev, 0x0D, 0b0000000000000010); // 16 bit I2S
 	nau8325_write_reg(audio_output_dev, 0x40, 0b1010100000000001); // DAC data does not gate power up
-	nau8325_write_reg(audio_output_dev, 0x65, 0b0000000000000111); // enable 8x MCLK and extra multipliers
-	nau8325_write_reg(audio_output_dev, 0x03, 0b0000000000100000); // MCLK x8
+	// nau8325_write_reg(audio_output_dev, 0x65, 0b0000000000000111); // enable 8x MCLK and extra multipliers
+	// nau8325_write_reg(audio_output_dev, 0x03, 0b0000000000100000); // MCLK x8
+	nau8325_write_reg(audio_output_dev, 0x03, 0); // 
+	nau8325_write_reg(audio_output_dev, 0x65, 0); // 
 	nau8325_write_reg(audio_output_dev, 0x61, 0b0001010101010101); // Enable everything through clock detection
 	nau8325_write_reg(audio_output_dev, 0x63, 0b0000000000000001); // ANALOG_CONTROL_3, volume
 	nau8325_write_reg(audio_output_dev, 0x04, 0b0000000000001100); // Enable L and R DAC (required)
@@ -268,26 +318,34 @@ int main(void)
 	gpio_init_callback(&button_cb_data, button_pressed, BIT(button.pin));
 	gpio_add_callback(button.port, &button_cb_data);
 
-	const struct device *i2s_dev = DEVICE_DT_GET(DT_NODELABEL(i2s0));
-	if (!device_is_ready(i2s_dev)) {
-		LOG_INF("%s is not ready\n", i2s_dev->name);
-		return 0;
-	}
+	// const struct device *i2s_dev = DEVICE_DT_GET(DT_NODELABEL(i2s0));
+	// if (!device_is_ready(i2s_dev)) {
+	// 	LOG_INF("%s is not ready\n", i2s_dev->name);
+	// 	return 0;
+	// }
 
 	/* Configure the I2S device */
-	struct i2s_config i2s_cfg;
-	i2s_cfg.word_size = 16; // due to int16_t in data_frame declaration
-	i2s_cfg.channels = 2; // L + R channel
-	i2s_cfg.format = I2S_FMT_DATA_FORMAT_I2S;
-	i2s_cfg.options = I2S_OPT_BIT_CLK_MASTER | I2S_OPT_FRAME_CLK_MASTER;
-	i2s_cfg.frame_clk_freq = 48000;
-	i2s_cfg.mem_slab = &mem_slab;
-	i2s_cfg.block_size = BLOCK_SIZE;
-	i2s_cfg.timeout = 50;
-	res = i2s_configure(i2s_dev, I2S_DIR_TX, &i2s_cfg);
-	if (res < 0) {
-		LOG_INF("Failed to configure the I2S stream: (%d)\n", res);
-		return 0;
+	// struct i2s_config i2s_cfg;
+	// i2s_cfg.word_size = 16; // due to int16_t in data_frame declaration
+	// i2s_cfg.channels = 2; // L + R channel
+	// i2s_cfg.format = I2S_FMT_DATA_FORMAT_I2S;
+	// i2s_cfg.options = I2S_OPT_BIT_CLK_MASTER | I2S_OPT_FRAME_CLK_MASTER;
+	// i2s_cfg.frame_clk_freq = 48000;
+	// i2s_cfg.mem_slab = &mem_slab;
+	// i2s_cfg.block_size = BLOCK_SIZE;
+	// i2s_cfg.timeout = 50;
+	// res = i2s_configure(i2s_dev, I2S_DIR_TX, &i2s_cfg);
+	// if (res < 0) {
+	// 	LOG_INF("Failed to configure the I2S stream: (%d)\n", res);
+	// 	return 0;
+	// }
+
+
+	nrfx_err_t err = audio_init();
+	if (err != NRFX_SUCCESS)
+	{
+		LOG_ERR("i2s set up failed!");
+		return;
 	}
 
 	LOG_INF("i2s configured");

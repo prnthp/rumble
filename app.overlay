@@ -9,7 +9,8 @@
 		compatible = "usb-audio-hp";
 		feature-mute;
 		channel-l;
-		channel-r;		
+		channel-r;
+		sample-rate-hz = <48000>;
 		
 		feature-volume;
 		volume-max = <0x0500>;
@@ -29,4 +30,8 @@
 
 &i2s0 {
 	status="okay";
+};
+
+&clock {
+	hfclkaudio-frequency = < 12288000 >;
 };
