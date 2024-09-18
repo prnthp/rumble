@@ -5,6 +5,13 @@
     "nrf_power.h": "c",
     "kernel.h": "c",
     "i2s.h": "c",
-    "nrfx_i2s.h": "c"
+    "nrfx_i2s.h": "c",
+    "usb_device.h": "c",
+    "log.h": "c",
+    "audio_usb.h": "c",
+    "data_fifo.h": "c",
+    "usb_audio.h": "c",
+    "stdint.h": "c",
+    "configs.h": "c"
   }
 }
