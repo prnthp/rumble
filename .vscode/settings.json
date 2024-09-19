@@ -12,6 +12,9 @@
     "data_fifo.h": "c",
     "usb_audio.h": "c",
     "stdint.h": "c",
-    "configs.h": "c"
+    "configs.h": "c",
+    "init.h": "c",
+    "gpio.h": "c",
+    "audio_i2s.h": "c"
   }
 }

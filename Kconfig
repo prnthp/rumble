@@ -1,4 +1,0 @@
-# TODO: figure this shit out
-# config AUDIO_BIT_DEPTH_OCTETS
-# int "Bit depth in bytes"
-#     default 2
