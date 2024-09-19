@@ -104,7 +104,7 @@ static void data_received(const struct device *dev,
 static void feature_update(const struct device *dev,
 			   const struct usb_audio_fu_evt *evt)
 {
-	uint8_t val = 0;
+	uint16_t val = 0;
 	LOG_DBG("Control selector %d for channel %d updated",
 		evt->cs, evt->channel);
 	switch (evt->cs) {

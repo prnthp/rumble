@@ -30,3 +30,7 @@
 &i2s0 {
 	status="okay";
 };
+
+&clock {
+	hfclkaudio-frequency = < 12288000 >;
+};
