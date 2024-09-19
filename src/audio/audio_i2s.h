@@ -3,8 +3,6 @@
 
 #include <zephyr/kernel.h>
 
-#include "configs.h"
-
 #define FRAME_SIZE_BYTES                                                                           \
 	((CONFIG_I2S_LRCK_FREQ_HZ / 1000 * 10) * CONFIG_I2S_CH_NUM * CONFIG_AUDIO_BIT_DEPTH_OCTETS)
 #define BLOCK_SIZE_BYTES (FRAME_SIZE_BYTES / CONFIG_FIFO_FRAME_SPLIT_NUM)

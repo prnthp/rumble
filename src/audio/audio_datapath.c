@@ -5,7 +5,6 @@
 
 #include "audio_i2s.h"
 #include "audio_system.h"
-#include "configs.h"
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(audio_datapath, LOG_LEVEL_INF);

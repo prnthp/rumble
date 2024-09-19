@@ -1,4 +1,36 @@
-# TODO: figure this shit out
-# config AUDIO_BIT_DEPTH_OCTETS
-# int "Bit depth in bytes"
-#     default 2
+source "Kconfig.zephyr"
+
+menuconfig RUMBLEPACK_AUDIO
+bool "Rumblepack Config"
+
+if RUMBLEPACK_AUDIO
+
+config AUDIO_BIT_DEPTH_OCTETS
+int "Audio bit depth in bytes"
+    default 2
+
+config CONFIG_AUDIO_BIT_DEPTH_BITS
+int "Audio bit depth in bits"
+    default 16
+
+config AUDIO_SAMPLE_RATE_HZ
+int "Sample rate in Hz"
+    default 48000
+
+config FIFO_FRAME_SPLIT_NUM
+int "Duration of frames to split in ms"
+    default 10
+
+config I2S_LRCK_FREQ_HZ
+int "LRCK Freqeuncy, should be same as sample rate"
+    default AUDIO_SAMPLE_RATE_HZ
+
+config I2S_CH_NUM
+int "Number of channels"
+    default 2
+
+config AUDIO_MAX_PRES_DLY_US
+int "Maximum delay in us"
+    default 60000
+
+endif # RUMBLEPACK_AUDIO

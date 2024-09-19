@@ -9,6 +9,12 @@ list(APPEND ZEPHYR_EXTRA_MODULES
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(audio)
 
+zephyr_library_include_directories(
+    src/audio
+)
+
+add_subdirectory(src/audio)
+
 set(SOURCES
     src/main.c
     )

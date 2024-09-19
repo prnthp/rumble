@@ -6,8 +6,6 @@
 #include <zephyr/usb/class/usb_audio.h>
 #include <data_fifo.h>
 
-#include "configs.h"
-
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(audio_usb, LOG_LEVEL_INF);
 
