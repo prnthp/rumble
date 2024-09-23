@@ -61,12 +61,24 @@ static void data_received(const struct device *dev,
 			  struct net_buf *buffer,
 			  size_t size)
 {
-	int ret;
-
 	if (!buffer || !size) {
 		/* This should never happen */
 		return;
 	}
+
+	// if (size < 192)
+	// {
+	// 	net_buf_unref(buffer);
+	// 	return;
+	// }
+
+	if (size != 192)
+	{
+		LOG_ERR("Buffer not 192, got %d", size);
+		net_buf_unref(buffer);
+		return;
+	}
+
 
 	LOG_DBG("Received %d data, buffer %p", size, buffer);
 
@@ -104,16 +116,19 @@ static void data_received(const struct device *dev,
 static void feature_update(const struct device *dev,
 			   const struct usb_audio_fu_evt *evt)
 {
-	uint16_t val = 0;
+	int16_t val = 0;
 	LOG_DBG("Control selector %d for channel %d updated",
 		evt->cs, evt->channel);
 	switch (evt->cs) {
 	case USB_AUDIO_FU_MUTE_CONTROL:
-		val = &evt->val;
+		val = *((int16_t *)(evt->val));
+		// val = 1, mute
+		// val = 0, 256, unmute
 		LOG_INF("Mute control: %d, len: %d", val, evt->val_len);
 		break;
 	case USB_AUDIO_FU_VOLUME_CONTROL:
-		val = &evt->val;
+		val = *((int16_t *)(evt->val));
+		// val = -14592, -12800, ... 0, 256, 512, 768, 1024, 1280
 		LOG_INF("Volume control: %d, len: %d", val, evt->val_len);
 		break;
 	default:
