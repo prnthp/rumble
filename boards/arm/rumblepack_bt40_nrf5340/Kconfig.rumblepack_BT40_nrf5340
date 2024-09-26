@@ -1,0 +1,8 @@
+# Copyright (c) 2023 Nordic Semiconductor ASA
+# SPDX-License-Identifier: Apache-2.0
+
+config BOARD_RUMBLEPACK_BT40_NRF5340
+	select SOC_NRF5340_CPUAPP_QKAA if BOARD_RUMBLEPACK_BT40_NRF5340_CPUAPP
+	select SOC_NRF5340_CPUNET_QKAA if BOARD_RUMBLEPACK_BT40_NRF5340_CPUNET
+	# bool "rumblepack_BT40_nrf5340"
+	# depends on SOC_NRF5340_CPUAPP_QKAA
