@@ -1,0 +1,20 @@
+/*
+ * Copyright (c) 2020 Nordic Semiconductor ASA
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+#include <nordic/nrf5340_cpuappns_qkaa.dtsi>
+#include "rumblepack_bt40_nrf5340_multicore_cpuapp_common.dtsi"
+
+/ {
+	model = "Rumblepack BT40 nRF5340 Multicore NRF5340 Application";
+	compatible = "jom,rumblepack-bt40-nrf5340-multicore-cpuapp";
+
+	chosen {
+		zephyr,sram = &sram0_ns;
+		zephyr,flash = &flash0;
+		zephyr,code-partition = &slot0_ns_partition;
+	};
+};

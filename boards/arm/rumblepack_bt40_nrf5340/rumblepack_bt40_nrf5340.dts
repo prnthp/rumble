@@ -55,7 +55,6 @@
 	};
 };
 
-
 &gpiote {
 	status = "okay";
 };

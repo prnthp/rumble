@@ -1,0 +1,8 @@
+board:
+  name: rumblepack_bt40_nrf5340_multicore
+  vendor: jom
+  socs:
+  - name: 'nrf5340'
+    variants:
+    - name: 'ns'
+      cpucluster: 'cpuapp'

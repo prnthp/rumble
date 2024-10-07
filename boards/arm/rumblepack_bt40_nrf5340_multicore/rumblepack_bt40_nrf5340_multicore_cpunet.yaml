@@ -1,0 +1,13 @@
+identifier: rumblepack_bt40_nrf5340_multicore/nrf5340/cpunet
+name: NRF5340-RUMBLEPACK-BT40-NRF5340-MULTICORE-network-MCU
+type: mcu
+arch: arm
+toolchain:
+  - gnuarmemb
+  - xtools
+  - zephyr
+ram: 64
+flash: 256
+supported:
+  - watchdog
+vendor: nordic

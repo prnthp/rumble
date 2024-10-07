@@ -1,0 +1,19 @@
+identifier: rumblepack_bt40_nrf5340_multicore/nrf5340/cpuapp/ns
+name: NRF5340-RUMBLEPACK-BT40-NRF5340-MULTICORE-application-MCU-Non-Secure
+type: mcu
+arch: arm
+toolchain:
+  - gnuarmemb
+  - xtools
+  - zephyr
+ram: 192
+flash: 192
+supported:
+  - i2c
+  - i2s
+  - spi
+  - pwm
+  - watchdog
+  - usb_cdc
+  - usb_device
+vendor: nordic
